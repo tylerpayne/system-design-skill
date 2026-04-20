@@ -5,7 +5,7 @@ A Claude skill that runs a structured system design interview to turn a rough so
 ## What's in this repo
 
 ```
-system-design-interview/
+.claude/skills/system-design-interview/
   SKILL.md
   references/
     interview-phases.md
@@ -16,7 +16,7 @@ system-design-interview/
     output-template.md
 ```
 
-`system-design-interview/` is the skill itself. `SKILL.md` is the entry point; the `references/` files are loaded on demand during the interview.
+`SKILL.md` is the entry point; the `references/` files are loaded on demand during the interview.
 
 ## What it does
 
@@ -40,10 +40,10 @@ It defaults to the simplest architecture that meets requirements — no reaching
 
 ## Installing
 
-Copy the `system-design-interview/` directory into your Claude skills location:
+Copy `.claude/skills/system-design-interview/` into a Claude skills location:
 
 - **User-level (all projects):** `~/.claude/skills/system-design-interview/`
-- **Project-level:** `.claude/skills/system-design-interview/` inside your repo
+- **Project-level:** `.claude/skills/system-design-interview/` inside your repo (already in place here)
 
 Claude Code picks up skills automatically from either location.
 

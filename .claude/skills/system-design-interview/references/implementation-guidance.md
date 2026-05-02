@@ -4,9 +4,11 @@ Read this file when you need to produce or review code, or when populating the `
 
 This is **implementation-side** content — it's about how code gets structured, not which components sit in the architecture. The companion to `tech-decisions.md` (which is about *which* components) and `interview-phases.md` (which is about conducting the interview).
 
-## The cardinal rule
+## The cardinal rules
 
-**Most good implementations use zero or one design pattern.** The single most common LLD mistake is forcing patterns or principles where simpler code would work. If you catch yourself reaching for Factory + Builder + Strategy on a 200-line project, stop.
+**1. Correctness tests come before implementation.** Before writing the body of a non-trivial class or method, write down — in prose or as concrete test cases — the specific behaviors that must hold for it to be correct. Happy path, edge cases, error modes, invariants. This serves three purposes: it forces the design to be precise, it surfaces ambiguity in the requirements, and it gives you an executable definition of "done." Vague designs hide behind vague tests; concrete tests-first thinking exposes both.
+
+**2. Most good implementations use zero or one design pattern.** The single most common LLD mistake is forcing patterns or principles where simpler code would work. If you catch yourself reaching for Factory + Builder + Strategy on a 200-line project, stop.
 
 Principles and patterns are tools for when simpler code stops working — not starting points. Start simple. Add structure when the simple approach genuinely breaks down.
 
@@ -22,6 +24,8 @@ Principles and patterns are tools for when simpler code stops working — not st
 ## 1. Implementation-time delivery framework
 
 When writing a meaningful class or module (not a one-off script), follow this order. It mirrors the architecture-interview flow, scaled down to a single subsystem.
+
+The crucial property of this framework: **steps 1–5 happen before any implementation code exists**. By the time you start step 6, you should already know what "correct" means in concrete, checkable terms. If you can't articulate the tests, you don't yet understand the design.
 
 ### Step 1: Nail requirements for this slice
 What does this class/module need to do? What's in scope, what's out? Don't skip this even for code-level work — it's how you avoid scope creep and over-engineering. If building from `build-plan.md`, re-read the acceptance criteria for the current phase.
@@ -42,16 +46,43 @@ For each class, answer:
 
 Anchor on **"Tell, Don't Ask"**: objects manage their own state and expose behavior. Callers should not reach in, read fields, make decisions, and write back. Rules live with the entity that owns the relevant state.
 
-### Step 4: Implement the happy path, then edge cases
-For each method:
-1. Write the straight-line happy path first — what happens when everything is valid
-2. Then enumerate failure modes: invalid inputs, illegal operations, state violations
-3. Handle each explicitly; don't let them propagate as unhandled exceptions
+### Step 4: Specify correctness tests *before* writing implementation
+This is the load-bearing step. For each meaningful class or method, write down the specific behaviors that prove it correct — *before* you implement it. The list should be concrete enough that someone else could turn it into a passing test suite.
+
+For each method/behavior, enumerate at least:
+
+- **Happy path** — given valid inputs and the expected starting state, the result is X.
+- **Edge cases** — empty inputs, single-element inputs, max-size inputs, boundary values (0, 1, N, N+1), unicode/whitespace, duplicates, ordering, concurrency races where relevant.
+- **Error / illegal-operation modes** — invalid input shape, operation called in the wrong state, missing prerequisites, expired tokens, exceeded limits. State the exception or error each one produces.
+- **Invariants** — properties that hold across *all* operations (e.g., "balance never goes negative," "every order has exactly one final terminal state," "ids are stable across reads").
+- **State transitions** — for stateful objects, list the legal transitions and at least one test per illegal transition.
+
+A useful template per behavior:
+
+> *Given* [starting state] *when* [operation with these inputs] *then* [observable result] *and* [invariant still holds].
+
+Three rules for this step:
+
+1. **Write the test list before coding.** If a test is hard to express, the design probably has a hole — fix the design before writing code that papers over it.
+2. **Prefer behavioral assertions over implementation assertions.** Test what the class does, not how it does it. "After deposit(100), balance() == 100" — not "the internal `_amount` field equals 100."
+3. **Cover the unhappy paths explicitly.** Most bugs hide in the cases nobody listed. If you can't name the error modes, you can't claim correctness.
+
+For algorithmic code, also write down 2–3 **property-based** assertions if any apply (sort produces a permutation; encode/decode round-trips; idempotent operations are idempotent under retry).
+
+These tests are the spec for step 6. They should also flow directly into the actual test suite — keep the wording close to test names.
 
 ### Step 5: Trace a concrete scenario
-Pick a realistic example and walk through it step by step, showing initial state, each operation, state changes, and transitions. Catches logical errors before the tests do.
+Pick a realistic example and walk through it step by step against the design from step 3 and the tests from step 4. Show initial state, each operation, state changes, and transitions, and confirm that each step would satisfy the relevant test from step 4. This catches logical errors and missing tests before any code is written.
 
-### Step 6: Consider extensibility last
+### Step 6: Implement to satisfy the tests — happy path first, then edge cases
+For each method:
+1. Write the straight-line happy path first — make the happy-path tests pass.
+2. Then handle the edge cases and error modes from step 4 explicitly; don't let them propagate as unhandled exceptions.
+3. Re-check invariants — every public method should preserve them on entry and exit.
+
+If during implementation you discover a case you didn't list in step 4, **add it to the test list first**, then implement. Don't let cases sneak in untested.
+
+### Step 7: Consider extensibility last
 Once it works, ask: "what would I do if requirement X were added?" If the answer is "rewrite everything," reconsider the design. If it's "add a new class and wire it in," you're probably fine. **Don't** preemptively build the extensibility — just verify the seams exist.
 
 ---
@@ -256,7 +287,8 @@ When generating the output skill, the `implementation.md` reference should captu
 4. **Patterns deliberately chosen for this project** — e.g., "Strategy for PaymentProvider, State Machine for OrderStatus, no Singletons, composition over inheritance everywhere"
 5. **Patterns deliberately avoided** (and why) — to prevent cargo-culting later
 6. **Principles to hold tightly** — usually KISS + YAGNI + SRP, plus anything domain-specific
-7. **Testing approach** — unit vs integration, what's mocked, coverage expectations
-8. **Cross-cutting concerns** — how auth, rate limiting, observability are wired in
+7. **Testing approach** — unit vs integration, what's mocked, coverage expectations, and an explicit **correctness-tests-first** rule (write the test list per slice before implementation, per Step 4 of the delivery framework above)
+8. **Per-entity correctness sketches** — for the 3–5 most important domain classes/services, a starter list of behaviors, edge cases, and invariants that must hold. This is not the full test suite, but the seed list that step 4 of the delivery framework expects to find when implementation starts.
+9. **Cross-cutting concerns** — how auth, rate limiting, observability are wired in
 
 See `output-template.md` for the full file template.

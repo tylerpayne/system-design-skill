@@ -499,25 +499,46 @@ To prevent cargo-culting in later work:
 
 ## Class and module hints for the main entities
 
-For the major domain entities, a rough sketch of how they should be modeled. Not final code, just orientation.
+For the major domain entities, a rough sketch of how they should be modeled, **plus a seed list of correctness expectations** that future implementation work expands into actual tests. Not final code, just orientation.
 
 ### `<Entity>`
 - **Responsibilities**: <bullets>
 - **State**: <fields>
 - **Public behavior**: <methods>
 - **Rules belonging here**: <which validations / transitions live on this class>
+- **Invariants** (must always hold): 
+  - <e.g., "balance never goes negative">
+  - <e.g., "every entity has exactly one terminal status">
+- **Edge cases / error modes to cover before implementing**:
+  - <e.g., "operation called in wrong state → raise IllegalStateError">
+  - <e.g., "concurrent updates → last write wins, never partial state">
 
 ### `<Orchestrator>`
 - **Coordinates**: <which other entities>
 - **State**: <fields>
 - **Public behavior**: <methods>
+- **Invariants**: <bullets>
+- **Edge cases / error modes to cover before implementing**: <bullets>
 
 <Repeat for the 3–5 most important classes. Skip for simple projects.>
 
+## Correctness-tests-first rule (non-negotiable)
+
+Before implementing any non-trivial class, method, or service in this project:
+
+1. Write down — in prose or as concrete test cases — the specific behaviors that must hold (happy path, edge cases, error / illegal-operation modes, invariants).
+2. Pull the seed list above for the relevant entity, then expand it into a full test list for the slice you're building.
+3. Trace one realistic scenario through the design *against* the test list before any code is written.
+4. Implement to satisfy the tests — happy path first, then edge cases. If you discover a case that wasn't on the list, add it to the list before implementing it.
+
+See the meta-skill's `references/implementation-guidance.md` § 1 (Implementation-time delivery framework) for the full framework. This is the single most important LLD rule for the project.
+
 ## Testing approach
 
+- **Tests-first per slice**: see the rule above. No PR introduces a new non-trivial class without its test list documented (in code or in the PR description).
 - **Unit tests**: <what's unit-tested — usually domain logic>
 - **Integration tests**: <what's integration-tested — usually API + DB>
+- **Property-based tests** (where they apply): <e.g., "encode/decode round-trip, sort produces a permutation, idempotent retries are safe">
 - **Mocks**: <what's mocked, what uses real implementations>
 - **Coverage target**: <e.g., "no hard number; domain logic should be ~90%, infra code ~50%">
 - **How to run**: <command>
@@ -565,10 +586,11 @@ Scope:
 - <Specific capability 2>
 - <UI for this flow>
 
-**Done when**:
-- <Acceptance criterion 1>
-- <Acceptance criterion 2>
-- <Observable outcome>
+**Done when** (each criterion below should be a concrete, testable condition — write the test before the code):
+
+- *Given* <starting state>, *when* <action>, *then* <observable result> — <e.g., "Given a new visitor, when they submit valid signup with a unique email, then an account is created, a session is set, and they land on the onboarding page.">
+- *Given* <error state>, *when* <action>, *then* <error result> — <e.g., "Given an existing email, when signup is attempted, then a 409 is returned with `error.code = 'email_exists'` and no account is created.">
+- <Observable system invariant that must hold across the phase>
 
 **Not in this phase**: <list things that might seem like they belong here but are deferred>.
 

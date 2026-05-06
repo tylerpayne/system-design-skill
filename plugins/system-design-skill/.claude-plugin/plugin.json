@@ -1,0 +1,18 @@
+{
+  "name": "system-design-skill",
+  "description": "Conduct a structured system design interview that turns a rough product idea into a complete, installable Claude skill capturing everything needed to build the system. Triggers on phrases like 'I want to build X', 'help me design Y', 'how should I architect Z'. Emphasizes correctness-tests-first LLD.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Tyler Payne"
+  },
+  "homepage": "https://github.com/tylerpayne/system-design-skill",
+  "repository": "https://github.com/tylerpayne/system-design-skill",
+  "keywords": [
+    "system-design",
+    "architecture",
+    "interview",
+    "skill-generator",
+    "lld",
+    "low-level-design"
+  ]
+}

@@ -423,16 +423,35 @@ Go component by component:
 8. **External services** — payment, email, SMS, auth, AI
 
 ### Implementation considerations (bridge to LLD)
-Once the high-level architecture is stable, spend 2–3 minutes on implementation-level choices that will drive code structure. This is the bridge from "which components" to "how the code is organized":
+Once the high-level architecture is stable, spend a meaningful chunk of time — usually longer than people think — on implementation-level choices that will drive code structure. **This is the bridge from "which components" to "how the code is organized," and getting it right at design time saves a lot of refactoring later.** The generated skill's `implementation.md` only works if this section was thought through.
+
+Cover:
 
 - **Language and framework per component** (be specific: "Python 3.12 + FastAPI," not "Python web framework")
 - **Module / package structure at a high level** — how code is organized within the API layer. For a monolith: domain modules vs API modules vs infra modules. For microservices: which service owns which domain.
+- **The 3–5 most important domain classes / services** — name them, sketch their responsibilities (state + behavior), and identify which is the orchestrator. This is the LLD seed; future Claude expands it during implementation.
 - **Any design patterns that are clearly called for** — Strategy if there are multiple payment providers, State Machine if there's a complex status lifecycle, Observer if multiple components react to events. Name them now; the generated skill's `implementation.md` will formalize.
 - **Patterns explicitly avoided** — no Singletons, no deep inheritance, no premature abstractions. Capture these as guardrails.
 - **Cross-cutting concerns** — where auth, rate limiting, logging, and error tracking live
-- **Testing approach** — unit vs integration, what's mocked
+- **Testing approach and the correctness-tests-first rule** — see below; this is non-negotiable.
 
-Load `references/implementation-guidance.md` if you're making pattern-level recommendations. Don't over-invest here — this is orientation for the code-time decisions, not a full code design. The goal is that future-Claude, reading `implementation.md` in the generated skill, can start coding without re-litigating fundamentals.
+#### Correctness tests come before implementation
+
+A repeated failure mode is jumping from architecture to code without a precise definition of "correct." Lock in this rule for the project, and capture it in `implementation.md`:
+
+> Before implementing any non-trivial class, method, or service, write down — in prose or as concrete test cases — the specific behaviors that must hold for it to be correct: happy path, edge cases, error / illegal-operation modes, and invariants. Vague designs hide behind vague tests.
+
+In the interview, do a short pass on the 3–5 most important domain classes/services and seed their correctness expectations: list 2–4 invariants and 2–4 nasty edge cases per class. These don't need to be exhaustive — they're the seed list that future Claude expands when it starts step 4 of the LLD delivery framework (`implementation-guidance.md` § 1).
+
+Examples of invariants and edge cases to surface during the interview:
+
+- *Order service*: invariants — "an order has exactly one terminal state," "total never goes negative." Edge cases — partial refunds, concurrent status updates, payment-confirmed-but-shipping-failed.
+- *Rate limiter*: invariants — "no user exceeds N req/window," "limits are correct under clock skew." Edge cases — burst at window boundary, distributed instances disagree.
+- *Feed builder*: invariants — "no duplicate posts," "ordering is stable across paginated reads." Edge cases — celebrity follower with millions of fans, deleted post mid-fetch.
+
+Capture these directly in the spec; they belong to design, not to "we'll figure it out when we code."
+
+Load `references/implementation-guidance.md` if you're making pattern-level recommendations or sketching class responsibilities. Don't over-invest in code design here — this is orientation for the code-time decisions, not a full LLD. The goal is that future-Claude, reading `implementation.md` in the generated skill, can start coding *with the test list already in hand*, not re-derive it.
 
 ### Pitfalls
 - **Adding components you don't need.** Kafka for 100 users. Microservices for a 5-person team. A separate auth service for a CRUD app. Each extra component is a thing that can break. The anti-FAANG principle applies hardest here.
@@ -441,7 +460,7 @@ Load `references/implementation-guidance.md` if you're making pattern-level reco
 - **Over-specifying LLD here.** Language + framework + high-level module boundaries + clearly-needed patterns is enough. Don't design every class.
 
 ### When to move on
-Every component has a specific tech, a reason it's there, and you can describe the flow of a typical request/response end to end. Language/framework picked, rough module boundaries sketched, any clearly-needed patterns named. **The user has confirmed they're done with this phase.**
+Every component has a specific tech, a reason it's there, and you can describe the flow of a typical request/response end to end. Language/framework picked, rough module boundaries sketched, any clearly-needed patterns named, the 3–5 most important domain classes named with seed invariants and edge cases, and the correctness-tests-first rule explicitly recorded. **The user has confirmed they're done with this phase.**
 
 ### Capture for the spec
 - Component diagram (mermaid in the output)
@@ -450,8 +469,11 @@ Every component has a specific tech, a reason it's there, and you can describe t
 - Hosting / deployment target
 - Language + framework per component
 - High-level module structure
+- The 3–5 most important domain classes/services with one-line responsibilities and the orchestrator marked
+- Per-class seed correctness expectations: invariants + edge cases (2–4 of each, not exhaustive)
 - Design patterns deliberately chosen (and which ones to avoid)
 - Cross-cutting concerns — where they live
+- Testing approach + the **correctness-tests-first rule** (write tests before implementing each non-trivial slice)
 
 ---
 
@@ -524,8 +546,20 @@ Typical phased structure:
 
 For each phase, list:
 - What gets built (specific user-facing capabilities)
-- What's "done" looks like (acceptance criteria)
+- What's "done" looks like (**acceptance criteria expressed as concrete, testable conditions** — see below)
 - What's explicitly NOT in this phase
+
+#### Acceptance criteria as testable conditions
+
+Vague acceptance criteria are how phases drift. "Users can sign up" is not testable. Express each criterion as a concrete condition that a test (or a manual run) could verify. Use a *given / when / then* shape where possible:
+
+- *Given* a new visitor, *when* they submit valid signup with a unique email, *then* an account is created, a session is set, and they land on the onboarding page.
+- *Given* an existing email, *when* signup is attempted, *then* a 409 is returned with `error.code = "email_exists"` and no account is created.
+- *Given* a malformed email, *when* signup is attempted, *then* a 400 is returned and no DB write occurs.
+
+This serves the same purpose at the phase level that step 4 of the LLD framework serves at the class level: it forces precision before implementation, and produces an executable definition of "done." When future Claude starts a phase, the acceptance criteria *are* the test list — implementation isn't done until each one passes.
+
+For the deep-dive / hardening phase, also include criteria for the invariants surfaced during the Architecture phase (e.g., "no order can reach two terminal states," "rate limiter holds under N concurrent requests").
 
 ### Pitfalls
 - Horizontal slicing ("build all the data models, then all the APIs, then all the UIs"). This means no demoable progress until the end. Avoid unless there's a specific reason.

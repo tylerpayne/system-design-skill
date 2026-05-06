@@ -74,6 +74,8 @@ If the user clearly wants to keep going ("yes, next" / "move on"), don't belabor
 
 **Respect the user's time.** If they already know they want Postgres, don't quiz them on SQL vs NoSQL. Absorb what they've told you and focus questions where information is still missing.
 
+**Take LLD seriously, and put correctness tests before implementation.** The Architecture phase isn't just "which components" — it's also where the most important domain classes get sketched (state, behavior, invariants) and where their correctness expectations get seeded. The rule for the generated project, captured in the output skill, is: *before implementing any non-trivial class or service, write down the specific behaviors that prove it correct — happy path, edge cases, error modes, invariants.* Vague designs hide behind vague tests; concrete tests-first thinking exposes both. Acceptance criteria in the build plan should be expressed the same way (concrete, testable conditions, not "users can sign up"). See `references/implementation-guidance.md` § 1 for the full LLD framework.
+
 ## The anti-FAANG principle
 
 System design resources (including the framework this is based on) are mostly written for FAANG-scale problems. **Most projects are not FAANG-scale.** A well-tuned single Postgres instance handles shocking amounts of load — tens of thousands of transactions per second, terabytes of data. Most apps don't need Redis, Kafka, sharding, microservices, or any of the distributed-systems arsenal.
@@ -94,7 +96,7 @@ Load these as you need them. Don't read them all upfront.
 
 - **`references/non-functional-checklist.md`** — Full list of non-functional dimensions with quantification prompts. Read during the **Non-Functional Requirements phase** so you don't miss dimensions like compliance, durability, or observability.
 
-- **`references/implementation-guidance.md`** — Low-level design content: the LLD delivery framework, design principles (KISS/DRY/YAGNI/SOLID), OOP concepts (with "prefer composition"), and 8 core design patterns with "use when" triggers. Read during the **Architecture phase** when making implementation-level decisions, and again when generating the output skill's `implementation.md`.
+- **`references/implementation-guidance.md`** — Low-level design content: the LLD delivery framework (with **correctness tests specified before implementation** as a load-bearing step), design principles (KISS/DRY/YAGNI/SOLID), OOP concepts (with "prefer composition"), and 8 core design patterns with "use when" triggers. Read during the **Architecture phase** when making implementation-level decisions, and again when generating the output skill's `implementation.md`.
 
 - **`references/output-template.md`** — Exact format for the generated skill, with templates for `SKILL.md` and each reference file. Read when the interview is complete and you're **ready to generate the output skill**.
 

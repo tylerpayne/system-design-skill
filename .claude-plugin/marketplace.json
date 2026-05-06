@@ -1,0 +1,14 @@
+{
+  "name": "tylerpayne",
+  "owner": {
+    "name": "Tyler Payne"
+  },
+  "description": "Tyler Payne's Claude Code plugins.",
+  "plugins": [
+    {
+      "name": "system-design-skill",
+      "source": "./plugins/system-design-skill",
+      "description": "Run a structured system design interview that turns a rough product idea into a complete, installable Claude skill capturing everything needed to build the system."
+    }
+  ]
+}
